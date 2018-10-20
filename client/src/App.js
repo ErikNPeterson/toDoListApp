@@ -1,3 +1,5 @@
+// page is not updating... is it possible that I'm missing the Apollo graphql file ?
+
 import React, { Component } from 'react';
 import gql from "graphql-tag";
 import {graphql, compose} from 'react-apollo';
@@ -9,11 +11,12 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import ListItemText from '@material-ui/core/ListItemText';
 import Checkbox from '@material-ui/core/Checkbox';
 import IconButton from '@material-ui/core/IconButton';
-import CloseIcon from '@material-ui/icons/Close';
+import CloseIcon from '@material-ui/icons/Close'; // this says comment on the video
+import Form from './Form';
 
 const TodosQuery = gql`
 {
-  todos{
+  todos {
     id
     text
     complete
@@ -33,10 +36,19 @@ const RemoveMutation = gql`
   }
 `;
 
-// updateTodo does not work yet I need to go back and check this.
+const CreateTodoMutation = gql`
+  mutation($text: String!) {
+    createTodo(text: $text){
+      id
+      text
+      complete
+    }
+  }
+  `;
+
 class App extends Component { 
-    updateTodo = async todo => () => {
-    this.props.updateTodo({
+    updateTodo = async todo => {
+    await this.props.updateTodo({
       variables: {
         id: todo.id,  
         complete: !todo.complete
@@ -45,18 +57,23 @@ class App extends Component {
         // Read the data from our cache for this query.
         const data = store.readQuery({ query: TodosQuery });
         // Add our comment from the mutation to the end.
-        data.todos = data.todos.map(x => x.id === todo.id ? ({
-          ...todo,
-          complete: !todo.complete,
-        }) : x)
+        data.todos = data.todos.map(
+          x => 
+            x.id === todo.id 
+              ? {
+                  ...todo,
+                  complete: !todo.complete,
+                }
+             : x
+          );
         // Write our data back to the cache.
         store.writeQuery({ query: TodosQuery, data });
-      },
+      }
     });
   };
 
   removeTodo = async todo => {
-    this.props.removeTodo({
+    await this.props.removeTodo({
       variables: {
         id: todo.id,  
       },
@@ -71,8 +88,26 @@ class App extends Component {
     });
   }
 
+  createTodo = async text => {
+    await this.props.createTodo({
+      variables: {
+        text,  
+      },
+      update: (store, { data: {createTodo}}) => {
+        // Read the data from our cache for this query.
+        const data = store.readQuery({ query: TodosQuery });
+        // Add our comment from the mutation to the end.
+        data.todos = data.todos.push(createTodo);
+        // Write our data back to the cache.
+        store.writeQuery({ query: TodosQuery, data });
+      },
+    });
+  }
+  
   render() {
-    const {data: {loading, todos} } = this.props;
+    const {
+      data: {loading, todos} 
+    } = this.props;
     if(loading){
       return null;
     }
@@ -81,18 +116,19 @@ class App extends Component {
     <div style={{ display: "flex"}}>
       <div style={{ margin: "auto", width: 400 }} >
       <Paper elevation={1}>
-
-              <List>
+        <List>
+          <Form submit={this.createTodo} />
           {todos.map(todo => (
             <ListItem
               key={todo.id}
               role={undefined}
               dense
               button
-              onClick={() => this.updateTodo(todo)}
+              onClick={() => this.updateTodo(todo)} 
             >
               <Checkbox
                 checked={todo.complete}
+                // onClick={() => this.updateTodo(todo.complete)}
                 tabIndex={-1}
                 disableRipple
               />
@@ -116,6 +152,7 @@ class App extends Component {
 
 
 export default compose(
+  graphql(CreateTodoMutation, {name: 'createTodo'}),
   graphql(RemoveMutation, {name: 'removeTodo'}),
-  graphql(UpdateMutation, {name:"updateTodo"}),
+  graphql(UpdateMutation, {name:'updateTodo'}),
   graphql(TodosQuery))(App);

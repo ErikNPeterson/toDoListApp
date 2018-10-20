@@ -7,7 +7,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 
 const client = new ApolloClient({
-  uri: "http://localhost:3001"
+  uri: "http://localhost:3001" 
 });
 
 
